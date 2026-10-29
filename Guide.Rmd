@@ -1,0 +1,171 @@
+---
+title: "Guide"
+output: html_document
+date: "2026-10-21"
+---
+
+# Exploratory Data Analysis: Reading the data:
+
+Summary:
+
+    str(stops) - structure of the object and information about the class, length and content of each column
+    summary(stops) - summary statistics for each column
+    glimpse(stops) - returns the number of columns and rows of the tibble, the names and class of each column, and previews as many values will fit on the screen. Unlike the other inspecting functions listed above, glimpse() is not a ‘base R’ function so you need to have the dplyr or tibble packages loaded to be able to execute it.
+
+Size:
+
+    dim(stops) - returns a vector with the number of rows in the first element, and the number of columns as the second element (the dimensions of the object)
+    nrow(stops) - returns the number of rows
+    ncol(stops) - returns the number of columns
+    length(stops) - returns number of columns
+
+Content:
+
+    head(stops) - shows the first 6 rows
+    tail(stops) - shows the last 6 rows
+
+Names:
+
+    names(stops) - returns the column names (synonym of colnames() for data.frame objects)
+    rownames(stops) - returns the row names
+
+Reading Geographic files:
+    
+    st_read() - Returns data from a gpkg, shapefile into a dataframe
+    read_sf() - Returns data from a gpkg, shapefile into a tibble
+    st_crs() - query the CRS of an sf vector/raster object
+    crs() - query the CRS of a terra raster object
+    
+Raster file exploration in terra package:
+
+    dim() - returns the number of rows, columns and layers
+    ncell() - the number of cells(pixels)
+    res() - the spatial resolution
+    ext() - its spatial extent
+    crs() - its CRS
+    inMemory() - reports whether the raster data is stored in memory or on disk
+    nlyr() - retrieves the number of layers stored in a SpatRaster object
+    
+All coordinate reference systems - Geographic, Projected - are inherently not perfect. Between aspects like area, direction, distance, and shape - only 1 or 2 of those properties can be preserved.
+
+A quick summary of different projections, their types, properties, and suitability can be found at www.geo-projections.com
+
+```{r}
+schoolReportCard %>% count(testsubject, sort = TRUE)
+schoolReportCard %>% count(studentgroup, sort = TRUE)
+schoolReportCard %>% count(organization_level, sort = TRUE)
+```
+
+```{r}
+To browse all available palettes interactively (with previews and colorblind-safety flags), run cols4all::c4a_gui() — that's the palette catalogue tmap v4 draws from, and it's a fun 10-minute rabbit hole.
+```
+
+```{r}
+Resources:
+  - https://gadm.org/ - shape files
+  - To find the proj4-strings to a whole range of different geographic projections, use the search facility at http://spatialreference.org/ or http://epsg.io/.
+- Historical climate data (1970-2000): https://www.worldclim.org/data/worldclim21.html
+```
+
+```{r}
+library(terra)
+jan<-terra::rast("week3/wc2.1_5m_prec/wc2.1_5m_prec_01.tif")
+# have a look at the raster layer jan
+jan
+```
+```{r}
+plot(jan)
+```
+```{r}
+# set the proj 4 to a new object
+
+pr1 <- terra::project(jan, "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs")
+plot(pr1)
+```
+```{r}
+library(fs)
+dir_info("week3/wc2.1_5m_prec")
+```
+
+```{r}
+library(tidyverse)
+listfiles<-dir_info("week3/wc2.1_5m_prec") %>%
+  filter(str_detect(path, ".tif")) %>%
+  dplyr::select(path)%>%
+  pull()
+
+#have a look at the file names 
+listfiles
+```
+```{r}
+worldclimprecip <- listfiles %>%
+  terra::rast()
+  
+#have a look at the raster stack
+worldclimprecip
+```
+```{r}
+getwd()
+```
+```{r}
+?mean
+```
+
+```{r}
+num_char <- c(1, 2, 3, 'a')
+class(num_char)
+```
+```{r}
+num_logical <- c(1, 2, 3, TRUE)
+class(num_logical)
+```
+```{r}
+tricky <- c(1, 2, 3, '4')
+class(tricky)
+
+another <- c(1, TRUE, 'tricky', 2, 5, FALSE)
+class(another)
+```
+```{r}
+animals <- c("mouse", "rat", "dog", "octopus","cat")
+has_tail <- c(TRUE, TRUE, TRUE, FALSE, TRUE)
+```
+
+```{r}
+animals[c(-3)]
+animals[has_tail]
+```
+```{r}
+"cate" %in% animals
+```
+```{r}
+x <- 71:109
+y <- 4:9
+
+x * 3
+```
+
+```{r}
+x > 300
+```
+```{r}
+pop <- c(100, 452, 765, NA, 109, NA, 876)
+```
+
+```{r}
+sum(pop, na.rm = TRUE)
+```
+```{r}
+pop[is.na(pop)]
+```
+```{r}
+sum(is.na(pop))
+```
+```{r}
+install.packages("usethis")
+```
+```{r}
+edit_git_config()
+```
+
+

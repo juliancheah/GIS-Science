@@ -1,0 +1,424 @@
+---
+title: "Week3-Practical"
+output: html_document
+date: "2026-10-22"
+---
+```{r}
+install.packages("here")
+```
+
+
+```{r}
+library(sf)
+library(here)
+st_layers("week3/gadm41_AUS.gpkg")
+```
+```{r}
+library(sf)
+library(tidyverse)
+
+Ausoutline <- st_read("week3/gadm41_AUS.gpkg",
+                      layer='ADM_ADM_0')
+```
+```{r}
+print(Ausoutline)
+```
+```{r}
+library(sf)
+st_crs(Ausoutline)$proj4string
+```
+```{r}
+Ausoutline <- Ausoutline %>%
+  st_set_crs(., 4326)
+
+#or more concisely
+Ausoutline <- st_read("week3/gadm41_AUS.gpkg", 
+                      layer='ADM_ADM_0') %>% 
+  st_set_crs(4326)
+```
+```{r}
+AusoutlinePROJECTED <- Ausoutline %>%
+  st_transform(.,3112)
+
+print(AusoutlinePROJECTED)
+```
+```{r}
+#From sf to sp
+AusoutlineSP <- Ausoutline %>%
+  as(., "Spatial")
+
+#From sp to sf
+AusoutlineSF <- AusoutlineSP %>%
+  st_as_sf()
+```
+
+```{r}
+library(terra)
+jan<-terra::rast("week3/wc2.1_5m_prec/wc2.1_5m_prec_01.tif")
+# have a look at the raster layer jan
+jan
+```
+```{r}
+plot(jan)
+```
+```{r}
+pr1 <- terra::project(jan, "+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs")
+plot(pr1)
+```
+```{r}
+pr1 <- pr1 %>%
+  terra::project(., "+proj=longlat +datum=WGS84 +no_defs +type=crs")
+plot(pr1)
+```
+```{r}
+library(fs)
+dir_info("week3/wc2.1_5m_prec") 
+```
+
+```{r}
+library(tidyverse)
+listfiles<-dir_info("week3/wc2.1_5m_prec") %>%
+  filter(str_detect(path, ".tif")) %>%
+  dplyr::select(path)%>%
+  pull()
+
+#have a look at the file names 
+listfiles
+```
+```{r}
+worldclimprecip <- listfiles %>%
+  terra::rast()
+  
+#have a look at the raster stack
+worldclimprecip
+```
+```{r}
+# access the january layer
+worldclimprecip[[1]]
+```
+```{r}
+install.packages("tidyterra")
+library(tidyterra)
+
+worldclimprecip %>%
+  tidyterra::select(wc2.1_5m_prec_01)
+```
+
+```{r}
+month <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+names(worldclimprecip) <- month
+```
+
+```{r}
+worldclimprecip <- worldclimprecip%>%
+  tidyterra::rename(
+    Jan = wc2.1_5m_prec_01,
+    Feb = wc2.1_5m_prec_02,
+    Mar = wc2.1_5m_prec_03,
+    Apr = wc2.1_5m_prec_04,
+    May = wc2.1_5m_prec_05,
+    Jun = wc2.1_5m_prec_06,
+    Jul = wc2.1_5m_prec_07,
+    Aug = wc2.1_5m_prec_08,
+    Sep = wc2.1_5m_prec_09,
+    Oct = wc2.1_5m_prec_10,
+    Nov = wc2.1_5m_prec_11,
+    Dec = wc2.1_5m_prec_12
+    )
+```
+
+```{r}
+worldclimprecip$Jan
+```
+```{r}
+worldclimprecip%>%
+  tidyterra::select(Jan)
+```
+```{r}
+site <- c("Brisbane", "Melbourne", "Perth", "Sydney", "Broome", "Darwin", "Orange", 
+          "Bunbury", "Cairns", "Adelaide", "Gold Coast", "Canberra", "Newcastle", 
+          "Wollongong", "Logan City" )
+lon <- c(153.03, 144.96, 115.86, 151.21, 122.23, 130.84, 149.10, 115.64, 145.77, 
+         138.6, 153.43, 149.13, 151.78, 150.89, 153.12)
+lat <- c(-27.47, -37.91, -31.95, -33.87, 17.96, -12.46, -33.28, -33.33, -16.92, 
+         -34.93, -28, -35.28, -32.93, -34.42, -27.64)
+#Put all of this inforamtion into one list 
+samples <- data.frame(site, lon, lat, row.names="site")
+# Extract the data from the Rasterstack for all points 
+AUcityprecip<- terra::extract(worldclimprecip, samples)
+```
+
+```{r}
+Aucityprecip2 <- AUcityprecip %>% 
+  as_tibble()%>% 
+  add_column(Site = site, .before = "Jan")
+```
+
+```{r}
+Perthprecip <- Aucityprecip2 %>%
+  filter(site=="Perth")
+```
+
+```{r}
+Perthprecip <- Aucityprecip2[3,]
+```
+
+```{r}
+hist(as.numeric(Perthprecip))
+```
+```{r}
+library(tidyverse)
+#define where you want the breaks in the historgram
+userbreak<-c(5,25,45,65,85,105,125,145,165,185)
+
+# remove the ID and site columns
+Perthprecip <- Aucityprecip2 %>%
+  filter(site=="Perth")
+
+t<-Perthprecip %>%
+ dplyr::select(Jan:Dec)
+
+  hist((as.numeric(t)), 
+     breaks=userbreak, 
+     col="blue", 
+     main="Histogram of Perth Precipitation", 
+     xlab="Precipitation", 
+     ylab="Frequency")
+```
+```{r}
+histinfo <- as.numeric(t) %>%
+  as.numeric()%>%
+  hist(.)
+```
+```{r}
+histinfo
+```
+```{r}
+plot(Ausoutline$geom)
+```
+```{r}
+AusoutSIMPLE <- Ausoutline %>%
+  st_simplify(., dTolerance = 1000) %>%
+  st_geometry() %>%
+  plot()
+```
+```{r}
+print(Ausoutline)
+```
+```{r}
+#this works nicely for rasters
+crs(worldclimprecip)
+```
+```{r}
+Ausprecip <- Ausoutline %>%
+  # now crop our temp data to the extent
+  terra::crop(worldclimprecip,.)
+
+# plot the output
+plot(Ausprecip)
+```
+```{r}
+exactAus<-terra::mask(Ausprecip, Ausoutline)
+```
+
+```{r}
+#subset using the known location of the raster
+hist(exactAus[[3]], col="red", main ="March precipitation")
+```
+```{r}
+exactAus %>%
+  tidyterra::select(Mar)%>%
+  hist(., col="red", main ="March precipitation")
+```
+```{r}
+ggplot() +
+  # function from tidyterra
+  geom_spatraster(
+    # the raster 
+    data = exactAus,
+    # the layer within the raster
+    aes(fill = Mar)
+  )
+```
+```{r}
+exactAusdf <- exactAus %>%
+  as.data.frame()
+```
+
+```{r}
+library(ggplot2)
+# set up the basic histogram
+gghist <- ggplot(exactAusdf, 
+                 aes(x=Mar)) + 
+  geom_histogram(color="black", 
+                 fill="white")+
+  labs(title="Ggplot2 histogram of Australian March precipitation", 
+       x="Precipitation", 
+       y="Frequency")
+# add a vertical line to the histogram showing mean precipitation
+gghist + geom_vline(aes(xintercept=mean(Mar, 
+                                        na.rm=TRUE)),
+            color="blue", 
+            linetype="dashed", 
+            size=1)+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+squishdata<-exactAusdf%>%
+  pivot_longer(
+  cols = 1:12,
+  names_to = "Month",
+  values_to = "Precipitation"
+)
+```
+
+```{r}
+twomonths <- squishdata %>%
+  # | = OR
+  filter(., Month=="Jan" | Month=="Jun")
+```
+
+```{r}
+meantwomonths <- twomonths %>%
+  group_by(Month) %>%
+  summarise(mean=mean(Precipitation, na.rm=TRUE))
+
+meantwomonths
+```
+
+```{r}
+ggplot(twomonths, aes(x=Precipitation, color=Month, fill=Month)) +
+  geom_histogram(position="identity", alpha=0.5)+
+  geom_vline(data=meantwomonths, 
+             aes(xintercept=mean, 
+                 color=Month),
+             linetype="dashed")+
+  labs(title="Ggplot2 histogram of Australian Jan and Jun
+       precipitation",
+       x="Precipitation",
+       y="Frequency")+
+  theme_classic()+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+data_complete_cases <- squishdata %>%
+  drop_na()%>% 
+  mutate(Month = factor(Month, levels = c("Jan","Feb","Mar",
+                                          "Apr","May","Jun",
+                                          "Jul","Aug","Sep",
+                                          "Oct","Nov","Dec")))
+
+# Plot faceted histogram
+ggplot(data_complete_cases, aes(x=Precipitation, na.rm=TRUE))+
+  geom_histogram(color="black", binwidth = 5)+
+  labs(title="Ggplot2 faceted histogram of Australian precipitation", 
+       x="Precipitation",
+       y="Frequency")+
+  facet_grid(Month ~ .)+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+install.packages("plotly")
+```
+
+
+```{r}
+library(plotly)
+# split the data for plotly based on month
+
+jan <- squishdata %>%
+  drop_na() %>%
+  filter(., Month=="Jan")
+
+jun <- squishdata %>%
+  drop_na() %>%
+  filter(., Month=="Jun")
+
+# give axis titles
+x <- list (title = "Precipitation")
+y <- list (title = "Frequency")
+
+# set the bin width
+xbinsno<-list(start=0, end=40, size = 2.5)
+
+# plot the histogram calling all the variables we just set
+ihist<-plot_ly(alpha = 0.6) %>%
+        add_histogram(x = jan$Precipitation,
+        xbins=xbinsno, name="January") %>%
+        add_histogram(x = jun$Precipitation,
+        xbins=xbinsno, name="June") %>% 
+        layout(barmode = "overlay", xaxis=x, yaxis=y)
+
+ihist
+```
+
+```{r}
+# mean per month
+meanofall <- squishdata %>%
+  group_by(Month) %>%
+  summarise(mean = mean(Precipitation, na.rm=TRUE))
+
+# print the top 1
+head(meanofall, n=1)
+```
+
+```{r}
+# standard deviation per month
+sdofall <- squishdata %>%
+  group_by(Month) %>%
+  summarize(sd = sd(Precipitation, na.rm=TRUE))
+
+# maximum per month
+maxofall <- squishdata %>%
+  group_by(Month) %>%
+  summarize(max = max(Precipitation, na.rm=TRUE))
+
+# minimum per month
+minofall <- squishdata %>%
+  group_by(Month) %>%
+  summarize(min = min(Precipitation, na.rm=TRUE))
+
+# Interquartlie range per month
+IQRofall <- squishdata %>%
+  group_by(Month) %>%
+  summarize(IQR = IQR(Precipitation, na.rm=TRUE))
+
+# perhaps you want to store multiple outputs in one list..
+lotsofstats <- squishdata %>%
+  group_by(Month) %>%
+  summarize(IQR = IQR(Precipitation, na.rm=TRUE), 
+            max=max(Precipitation, na.rm=T))
+
+# or you want to know the mean (or some other stat) 
+#for the whole year as opposed to each month...
+
+meanwholeyear=squishdata %>%
+  summarize(meanyear = mean(Precipitation, na.rm=TRUE))
+```
+
+```{r}
+sdofall
+```
+
+```{r}
+maxofall
+```
+
+```{r}
+minofall
+```
+
+```{r}
+IQRofall
+```
+
+```{r}
+lotsofstats
+```
+
+```{r}
+meanwholeyear
+```
+

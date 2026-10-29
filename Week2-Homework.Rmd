@@ -1,0 +1,258 @@
+---
+title: "Week2-Homework"
+output: html_document
+date: "2026-10-20"
+---
+
+Homework Review
+
+Packages/Functions: 
+- Tidyverse --> filter(), mutate(), select(), str_detect(), summarise(), group_by(), na.omit(), case_when(), left_join()
+- Readr --> read_csv()
+- Tmap --> tm_shape(), tm_polygon()
+- Sf --> st_read(), st_transform()
+- Janitor --> clean_names()
+
+Process:
+- Write out what the output you want
+
+Read in data
+Check column types in school report
+Select - specific columns
+Filter - county!=multiple, org level = school, tets subject = science, all grades
+
+```{r}
+# Example of EDA practice in examining all the variables and its variable class
+Datatypelist <- report %>%
+  summarise_all(class) %>%
+  pivot_longer(everything(),
+               names_to="All_variables",
+               values_to="Variable_class")
+
+# Example of producing the cleaned up report in one command
+county_only <- report %>%
+  clean_names() %>%
+  select (all the different columns, comma separated) %>%
+  filter(this != not that) %>%
+  filter (this == that) %>%
+  filter (repeat as needed) %>%
+  group_by(county)%>%
+  na.omit() %>%
+  summarise(new_column_name = sum(column_example),
+            another_new_column_name = sum(column_example_2))
+
+# Example of 
+county_only_above_below_state <- data %>%
+  mutate(different_to_state= percent_met) %>%
+  mutate(case when this value > 0, then "above average"),
+  mutate()
+
+# always use the spatial data as the primary table
+joined_data <- shape %>% 
+  clean_names(.) %>%
+  left_join(.,
+            count_only_above_below_state,
+            by = c("countylabe" = "county")) # <- best practice to not use the strings if possible
+
+
+```
+
+
+```{r}
+#Load all the packages
+library(sf)
+library(tmaptools)
+library(tmap)
+library(dplyr)
+library(readr)
+library(tidyverse)
+library(tidyr)
+library(janitor)
+```
+
+
+
+```{r}
+# Let's read and load the data first!
+# na = "n/a"
+
+SchoolReportCard <- read_csv("week2/Report_Card_Assessment_Data_2018-19_School_Year_20241008.csv", 
+                         na = "n/a",
+                         locale = locale(encoding = "latin1"))
+```
+```{r}
+# Exploratory Data Analysis of the School Report Card CSV file
+SchoolReportCard%>%
+  colnames()
+```
+```{r}
+SchoolReportCard%>%
+  summarise(across(everything(), n_distinct))
+```
+```{r}
+# Exploratory data analysis to assess column names and unique values
+SchoolReportCard %>%
+  summarise(across(everything(), ~ paste(sort(unique(na.omit(.x))), collapse = " | "))) %>%
+  pivot_longer(everything(), names_to = "column", values_to = "unique_values")
+```
+
+```{r}
+SchoolReportCard_Science <- SchoolReportCard %>%
+  filter(str_detect(`TestSubject`, "Science"))
+```
+
+```{r}
+SchoolReportCard_Science2 <- SchoolReportCard %>%
+  filter(str_detect(`TestSubject`, "Science")) %>%
+  filter(str_detect(`GradeLevel`, "All Grades"))
+```
+
+```{r}
+SchoolReportCard_Science3 <- SchoolReportCard %>%
+  filter(str_detect(`TestSubject`, "Science")) %>%
+  filter(str_detect(`GradeLevel`, "All Grades")) %>%
+  filter(str_detect(`StudentGroup`, "All Students"))
+```
+
+```{r}
+SchoolReportCard_Science3 <- SchoolReportCard_Science3 %>%
+  clean_names()
+```
+
+```{r}
+SchoolReportCard_Science4 <- SchoolReportCard_Science3 %>%
+  filter(str_detect(`test_administration_group`,"WCAS"))
+```
+
+```{r}
+SchoolReportCard_Science5 <- SchoolReportCard_Science4 %>%
+  filter(str_detect(`organization_level`,"District|State"))
+```
+
+```{r}
+glimpse(SchoolReportCard_Science5)
+```
+```{r}
+SchoolReportCard_Science6 <- SchoolReportCard_Science5 %>%
+  mutate(across(c(count_of_students_expected_to_test,count_met_standard),
+                as.numeric))
+```
+```{r}
+glimpse(SchoolReportCard_Science6)
+```
+
+```{r}
+SchoolScience <- SchoolReportCard_Science6 %>%
+  mutate(percent_meeting_standard= (count_met_standard/count_of_students_expected_to_test)) %>%
+  dplyr::select(organization_level,
+        county,
+        district_name,
+        school_name,
+        student_group_type, 
+        student_group,
+        grade_level,
+        test_administration_group,
+        test_subject,
+        count_of_students_expected_to_test,
+        count_met_standard,
+        percent_meeting_standard) %>%
+  arrange(percent_meeting_standard)
+```
+
+```{r}
+SchoolScience3 <- SchoolScience %>%
+  filter(organization_level == "District") %>%
+  mutate(percent_meeting_standard = percent_meeting_standard * 100)
+```
+
+```{r}
+SchoolScience4 <- SchoolScience3 %>%
+  mutate(PercentDiff = percent_meeting_standard-46.67) %>%
+  mutate(across(is.numeric, round, 3))
+```
+```{r}
+SchoolScience_group <- SchoolScience4 %>%
+  group_by(county) %>%
+  summarise(
+    total_students_testing = sum(count_of_students_expected_to_test, na.rm = TRUE),
+    total_met_standard = sum(count_met_standard, na.rm = TRUE),
+    percent_met_standard = round(((total_met_standard / total_students_testing)*100), 3),
+    percent_diff = percent_met_standard - 46.67
+  ) %>%
+  arrange(percent_diff)
+
+SchoolScience_group
+```
+
+
+```{r}
+washington_boundaries <- st_read("week2/boundaries/Washington_Counties_with_Natural_Shoreline___washsh_area.shp")
+```
+```{r}
+summary(washington_boundaries)
+```
+```{r}
+plot(washington_boundaries)
+```
+
+```{r}
+CountyDataMap <- washington_boundaries %>%
+  left_join(.,
+        SchoolScience_group, 
+        by = c("COUNTYLABE" = "county"))
+```
+
+```{r}
+qtm(CountyDataMap,
+    fill = "percent_diff")
+```
+```{r}
+tmap_county <- CountyDataMap %>%
+  st_bbox(.) %>%
+  tmaptools::read_osm(., type = "esri", zoom = NULL)
+```
+
+```{r}
+tmap_mode("plot")
+
+tm_shape(tmap_county)+
+  tm_rgb()+
+  tm_shape(CountyDataMap)+
+  tm_polygons(fill="percent_diff",
+              fill.scale = tm_scale_intervals(values="brewer.bu_pu",
+                                              style="jenks"),
+                                              fill_alpha=0.5,
+              fill.legend = tm_legend(title = "Percent difference from state average",
+                                      size = 0.8))+
+  tm_compass(type="arrow", position = c("left", "bottom")) +
+  tm_scalebar(position = c("left", "bottom"))+
+  tm_title("Percentage difference of Student Science Grades compared to the State Average",
+           size = 2,
+           position = c("center","top"))
+```
+```{r}
+CountyDataMap84 <- CountyDataMap %>%
+  st_transform(.,4326)
+
+tmap_mode("view")
+```
+```{r}
+tm_shape(CountyDataMap84) + 
+  # add polygon layer
+  tm_polygons(fill="percent_diff",
+              fill.scale= tm_scale_intervals(values="brewer.rd_yl_gn",
+                                              # midpoint = 0
+                                              style  = "fixed",
+                                              breaks = seq(-25, 25, by = 5)     
+                                              ),
+                                              fill_alpha=0.8,
+              fill.legend = tm_legend(title = "Percent diff from State Average", 
+                                      size = 0.8))+
+  tm_basemap(server = "OpenStreetMap") +
+  tm_compass(type = "arrow", position = c("left", "bottom")) + 
+  tm_scalebar(position = c("left", "bottom"))+
+  tm_title("Percent diff of Science Student Grades compared to State Average", 
+            size = 2,
+            position = c("center", "top"))
+```
+

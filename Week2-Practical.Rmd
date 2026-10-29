@@ -1,0 +1,531 @@
+---
+title: "Week2-Practical"
+output: html_document
+date: "2026-10-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+1+5
+
+4*5^2
+```
+
+```{r}
+A <- 1
+B <- 2
+C <- A+B
+C 
+```
+```{r}
+ls()
+```
+```{r}
+rm(A)
+```
+
+```{r}
+# create some datasets, first a vector of 1-100 and 101-200
+# c means combine
+Data1 <- c(1:100)
+Data2 <- c(101:200)
+
+# Plot the data
+plot(Data1,Data2, col="red")
+```
+```{r}
+#just for fun, create some more, this time some normally distributed
+#vectors of 100 numbers
+
+Data3 <- rnorm(100, mean = 53, sd = 34)
+Data4 <- rnorm(100, mean = 64, sd = 14)
+
+#plot
+plot(Data3,Data4,col="blue")
+```
+```{r}
+?plot
+```
+
+```{r}
+df <- data.frame(Data1, Data2)
+plot(df, col="green")
+```
+```{r}
+library(tidyverse)
+#show the first 10 and then last 10 rows of data in df...
+df %>%
+  head()
+```
+
+```{r}
+df %>%
+  tail()
+```
+
+
+```{r}
+tail()
+```
+
+```{r}
+data.frame[row,column]
+```
+
+```{r}
+df[1:10, 1]
+```
+```{r}
+df[5:15,]
+```
+
+```{r}
+df[c(2,3,6),2]
+```
+```{r}
+df[,1]
+```
+```{r}
+library(dplyr)
+df <- df %>%
+  dplyr::rename(column1 = Data1, column2=Data2)
+```
+
+```{r}
+df %>%
+  dplyr::select(column1)
+```
+
+```{r}
+df$column1
+```
+```{r}
+df[["column1"]]
+```
+```{r}
+LondonDataOSK<- read.csv("week2/LondonData.csv", 
+                         header = TRUE, 
+                         sep = ",",  
+                         encoding = "latin1")
+```
+
+```{r}
+#wrangle the data in straight from the web using read_csv, 
+#skipping over the 'n/a' entries as you go...
+LondonData <- read_csv("https://data.london.gov.uk/download/f33fb38c-cb37-48e3-8298-84c0d3cc5a6c/772d2d64-e8c6-46cb-86f9-e52b4c7851bc/ward-profiles-excel-version.csv",
+                       locale = locale(encoding = "latin1"),
+                       na = "n/a")
+```
+```{r}
+class(LondonData)
+```
+```{r}
+class(LondonDataOSK)
+```
+```{r}
+Datatypelist <- LondonData %>% 
+  summarise_all(class) %>%
+  pivot_longer(everything(), 
+               names_to="All_variables", 
+               values_to="Variable_class")
+
+Datatypelist
+```
+
+```{r}
+LondonData <- read_csv("https://data.london.gov.uk/download/f33fb38c-cb37-48e3-8298-84c0d3cc5a6c/772d2d64-e8c6-46cb-86f9-e52b4c7851bc/ward-profiles-excel-version.csv", 
+                       locale = locale(encoding = "latin1"))
+```
+```{r}
+Datatypelist <- LondonData %>% 
+  summarise_all(class) %>%
+  pivot_longer(everything(), 
+               names_to="All_variables", 
+               values_to="Variable_class")
+
+Datatypelist
+```
+
+```{r}
+LondonData <- edit(LondonData)
+```
+
+```{r}
+summary(df)
+```
+```{r}
+LondonData%>%
+  colnames()%>%
+  # just look at the head, top5
+  head()
+```
+```{r}
+library(stringr)
+
+LondonBoroughs <- LondonData %>%
+  filter(str_detect(`New code`, "^E09"))
+```
+
+```{r}
+LondonBoroughs$`Ward name`
+```
+```{r}
+LondonBoroughs %>% 
+  dplyr::select(`Ward name`) %>%
+  print()
+```
+```{r}
+LondonBoroughs <- LondonBoroughs %>% distinct()
+```
+
+```{r}
+# select columns 1,19,20 and 21
+LondonBoroughs_manualcolks <- LondonBoroughs[,c(1,19,20,21)]
+```
+
+```{r}
+# select columns 1,19,20, and 21 with dplyr
+LondonBoroughs_dplyrcols <- LondonBoroughs %>%
+  dplyr::select(c(1,19,20,21))
+```
+
+```{r}
+LondonBoroughs_contains<-LondonBoroughs %>% 
+  dplyr::select(contains("expectancy"), 
+         contains("obese - 2011/12 to 2013/14"),
+         contains("Ward name")) 
+```
+
+```{r}
+install.packages("janitor")
+```
+```{r}
+library(janitor)
+
+LondonBoroughs <- LondonBoroughs %>% 
+  dplyr::rename(Borough=`Ward name`)%>%
+  clean_names()
+```
+
+```{r}
+Life_expectancy <- LondonBoroughs %>% 
+  #new column with average of male and female life expectancy
+  mutate(averagelifeexpectancy= (female_life_expectancy_2009_13 +
+                                    male_life_expectancy_2009_13)/2)%>%
+  #new column with normalised life expectancy
+  mutate(normalisedlifeexpectancy= averagelifeexpectancy /
+           mean(averagelifeexpectancy))%>%
+  #select only columns we want
+  dplyr::select(new_code,
+         borough,
+         averagelifeexpectancy, 
+         normalisedlifeexpectancy)%>%
+  #arrange in descending order
+  #ascending is the default and would be
+  #arrange(normalisedlifeepectancy)
+  arrange(desc(normalisedlifeexpectancy))
+```
+
+```{r}
+#top of data
+slice_head(Life_expectancy, n=5)
+```
+
+```{r}
+slice_tail(Life_expectancy, n=5)
+```
+```{r}
+Life_expectancy2 <- Life_expectancy %>%
+  mutate(UKcompare = case_when(averagelifeexpectancy>81.16 ~ "above UK average",
+                               TRUE ~ "below UK average"))
+Life_expectancy2
+```
+
+```{r}
+Life_expectancy2_group <- Life_expectancy2 %>%
+  mutate(UKdiff = averagelifeexpectancy-81.16) %>%
+  group_by(UKcompare)%>%
+  summarise(range=max(UKdiff)-min(UKdiff), count=n(), Average=mean(UKdiff))
+
+Life_expectancy2_group
+```
+
+```{r}
+Life_expectancy3 <- Life_expectancy %>%
+  mutate(UKdiff = averagelifeexpectancy-81.16)%>%
+  mutate(across(where(is.numeric), round, 3))%>%
+  mutate(across(UKdiff, round, 0))%>%
+  mutate(UKcompare = case_when(averagelifeexpectancy >= 81 ~ 
+                                 str_c("equal or above UK average by",
+                                       UKdiff, 
+                                       "years", 
+                                       sep=" "), 
+                               TRUE ~ str_c("below UK average by",
+                                            UKdiff,
+                                            "years",
+                                            sep=" ")))%>%
+  group_by(UKcompare)%>%
+  summarise(count=n())
+```
+```{r}
+Life_expectancy3
+```
+```{r}
+Life_expectancy4 <- Life_expectancy %>%
+  mutate(UKdiff = averagelifeexpectancy-81.16)%>%
+  mutate(across(where(is.numeric), round, 3))%>%
+  mutate(across(UKdiff, round, 0))
+```
+
+```{r}
+plot(LondonBoroughs$male_life_expectancy_2009_13,
+    LondonBoroughs$percent_children_in_reception_year_who_are_obese_2011_12_to_2013_14)
+```
+```{r}
+install.packages(c("tmaptools", "sf"))
+```
+
+```{r}
+#Load Packages (ignore any error messages about being built under a 
+#different R version):
+library(tmap)
+library(tmaptools)
+library(sf)
+```
+
+```{r}
+# this will take a few minutes
+# geojson in local folder
+# EW <- st_read("prac2_data/LAD_Dec_2015_FCB_GB.geojson")
+
+# shapefile in local folder
+EW <- st_read("week2/LAD_2015/LAD_Dec_2015_FCB_GB.shp")
+```
+```{r}
+LondonMap <- EW %>%
+  filter(str_detect(`lad15cd`, "^E09"))
+
+#plot it using the qtm function
+qtm(LondonMap)
+```
+```{r}
+library(janitor)
+LondonData <- clean_names(LondonData)
+
+#EW is the data we read in straight from the web
+BoroughDataMap <- EW %>%
+  clean_names()%>%
+  # the . here just means use the data already loaded
+  filter(str_detect(`lad15cd`, "^E09"))%>%
+  merge(.,
+        LondonData, 
+        by.x="lad15cd", 
+        by.y="new_code",
+        no.dups = TRUE)%>%
+  distinct(.,lad15cd,
+           .keep_all = TRUE)
+```
+```{r}
+BoroughDataMap2 <- EW %>% 
+  clean_names() %>%
+  filter(str_detect(lad15cd, "^E09"))%>%
+  left_join(., 
+            LondonData,
+            by = c("lad15cd" = "new_code"))
+```
+
+```{r}
+library(tmap)
+library(tmaptools)
+tmap_mode("plot")
+qtm(BoroughDataMap, 
+    fill = "rate_of_job_seekers_allowance_jsa_claimants_2015")
+```
+```{r}
+install.packages("osmdata")
+install.packages("OpenStreetMap")
+install.packages("usethis")
+
+usethis::edit_r_environ()
+
+```
+```{r}
+#RESET POINT - load all packages again..
+library(sf)
+library(tmaptools)
+library(tmap)
+library(dplyr)
+```
+```{r}
+Sys.getenv("JAVA_HOME")   # should print your Java path
+library(rJava)            # should load silently
+library(OpenStreetMap)    # should load silently
+```
+
+
+```{r}
+tmaplondon <- BoroughDataMap %>%
+  # st_bbox gives the bounding x and y coordinates 
+  st_bbox(.) %>% 
+  #note type="osm" gives error atm - issue raised on github: https://github.com/r-tmap/tmaptools/issues/41
+  tmaptools::read_osm(., type = "esri", zoom = NULL)
+```
+
+```{r}
+tmap_mode("plot")
+
+tm_shape(tmaplondon)+
+  # add basemap as Red Green Blue raster
+  tm_rgb()+
+  # add sf data
+  tm_shape(BoroughDataMap) + 
+  # add polygon layer
+  tm_polygons(fill="rate_of_job_seekers_allowance_jsa_claimants_2015",
+              fill.scale= tm_scale_intervals(values="brewer.bu_pu",
+                                              style="jenks"),
+                                              fill_alpha=0.5,
+              fill.legend = tm_legend(title = "rate of claimants 2015", 
+                                      size = 0.8))+
+  tm_compass(type = "arrow", position = c("left", "bottom")) + 
+  tm_scalebar(position = c("left", "bottom"))+
+  tm_title("Job seekers' Allowance Claimants. Holy Guacamole!", 
+            size = 2,
+            position = c("center", "top"))
+```
+```{r}
+BoroughDataMap84 <- BoroughDataMap %>%
+  # we will explore st_transform in future weeks, here it's needed for the basemap
+  st_transform(.,4326)
+
+tmap_mode("view")
+```
+```{r}
+  tm_shape(BoroughDataMap84) + 
+  # add polygon layer
+  tm_polygons(fill="rate_of_job_seekers_allowance_jsa_claimants_2015",
+              fill.scale= tm_scale_intervals(values="brewer.bu_pu",
+                                              style="jenks"),
+                                              fill_alpha=0.5,
+              fill.legend = tm_legend(title = "Job seekers' Allowance Claimants", 
+                                      size = 0.8))+
+  tm_basemap(server = "OpenStreetMap") +
+  tm_compass(type = "arrow", position = c("left", "bottom")) + 
+  tm_scalebar(position = c("left", "bottom"))+
+  tm_title("Job seekers' Allowance Claimants. Amazing!!", 
+            size = 2,
+            position = c("center", "top"))
+```
+
+```{r}
+Life_expectancy4map <- EW %>%
+    inner_join(., 
+            Life_expectancy4,
+            by = c("lad15cd" = "new_code"))%>%
+    distinct(.,lad15cd, 
+           .keep_all = TRUE)
+```
+
+```{r}
+tmap_mode("plot")
+
+tm_shape(tmaplondon)+
+  # add basemap as Red Green Blue raster
+  tm_rgb()+
+  # add sf data
+  tm_shape(Life_expectancy4map) + 
+  # add polygon layer
+  tm_polygons(fill="UKdiff",
+              fill.scale= tm_scale_intervals(values="brewer.bu_pu",
+                                              style="jenks"),
+                                              fill_alpha=0.5,
+              fill.legend = tm_legend(title = "Number of years", 
+                                      size = 0.8))+
+  tm_compass(type = "arrow", position = c("left", "bottom")) + 
+  tm_scalebar(position = c("left", "bottom"))+
+  tm_title("Difference in life expectancy", 
+            size = 2,
+            position = c("center", "top"))
+```
+```{r}
+# Tidying Flytipping data for example - 
+library(readr)
+library(tidyverse)
+
+flytipping1 <- read_csv("https://data.london.gov.uk/download/fly-tipping-incidents/536278ff-a391-4f20-bc79-9e705c9b3ec0/fly-tipping-borough.csv", 
+                       col_types = cols(
+                         code = col_character(),
+                         area = col_character(),
+                         year = col_character(),
+                         total_incidents = col_number(),
+                         total_action_taken = col_number(),
+                         warning_letters = col_number(),
+                         fixed_penalty_notices = col_number(),
+                         statutory_notices = col_number(),
+                         formal_cautions = col_number(),
+                         injunctions = col_number(),
+                         prosecutions = col_number()
+                       ))
+# view the data
+view(flytipping1)
+```
+```{r}
+#convert the tibble into a tidy tibble
+flytipping_long <- flytipping1 %>% 
+  pivot_longer(
+  cols = 4:11,
+  names_to = "tipping_type",
+  values_to = "count"
+)
+
+# view the data
+view(flytipping_long)
+```
+
+```{r}
+#an alternative which just pulls everything out into a single table
+flytipping2 <- flytipping1[,1:4]
+```
+
+```{r}
+#pivot the tidy tibble into one that is suitable for mapping
+flytipping_wide <- flytipping_long %>% 
+  pivot_wider(
+  id_cols = 1:2,
+  names_from = c(year,tipping_type),
+  names_sep = "_",
+  values_from = count
+)
+
+view(flytipping_wide)
+```
+
+```{r}
+widefly <- flytipping2 %>% 
+  pivot_wider(
+  names_from = year, 
+  values_from = total_incidents)
+```
+

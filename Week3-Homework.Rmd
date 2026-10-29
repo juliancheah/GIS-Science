@@ -1,0 +1,64 @@
+---
+title: "Week3-Homework"
+output: html_document
+date: "2026-10-22"
+---
+
+```{r}
+#Load all necessary packages
+library(sf) # st_read(), st_transform(), st_layers() 
+library(janitor) # clean_names()
+library(here)
+library(tidyverse) #read_csv(), filter(), mutate(), select()
+library(terra) # mask(), crop(), rast(), extract()
+library(fs)
+library(tidyterra) # optional
+library(ggplot2)
+library(plotly)
+```
+
+First step - look at the data
+Downloaded Spain Country outline from gadm - ssp1, ssp5 
+Chose maximum temperature, but can choose any other
+Raster data that is continuous - gpkg - specify the specific layer - ADM0 is very broad, ADM4 is localized/region focused
+- Columns of temp difference between ssp1 and ssp5 for all cities (ex. in Jan, across all cities in Spain the difference will be -0.1)
+
+Process:
+- Read in data
+- Check CRS
+- Data Wrangling - finish spanish cities
+                 - clip rasters (both SSP1 and SSP5) to Spain (optional)
+                - subtract rasters
+
+- Extract data - For each city extract the difference
+               - Join the difference to the city points
+- Join
+- Plot
+
+```{r}
+spain <- st_read()
+
+layers <-  st_layers
+
+world_cities <-  st_read()
+
+ssp1 <- terra::rast()
+
+ssp5 <- 
+```
+
+```{r}
+spain_diff <-  ssp1 %>% 
+  terra::crop(.,spain)
+
+exact_spain <- spain_diff %>%
+  terra::mask(.,spain) # recommend crop over masking
+
+diff_climate_model  <- exact_spain_5 - spain1 # subtracts the values of all layers between these two 
+```
+
+```{r}
+spain_city_diff <- terra::extract(diff_climate_model, spanish_cities) 
+```
+
+Join the extracted data back to the point dataset.. rest of the data will be uploaded to GitHub
