@@ -1,0 +1,65 @@
+---
+title: "Week4-Homework"
+output: html_document
+date: "2026-11-05"
+---
+
+```{r}
+# required packages
+library(sf) # st_read(), st_write(), st_transform()
+library(tidyverse) #read_csv(), left_join(), select(), mutate(), filter()
+library(janitor) #clean_names()
+library(countrycode) #countrycode
+library(tmap)
+```
+
+```{r}
+gii_data <- read_csv("week4/HDR25_Composite_indices_complete_time_series.csv", 
+                      locale = locale(encoding = "latin1"),
+                       na = " ", skip=0) 
+  
+world <- st_read("week4/World_Countries_(Generalized)_2173680399808997149.geojson") %>% clean_names()
+
+world_shp <- st_read("week4/World_Countries_Generalized.shp")
+```
+
+```{r}
+select_gii_data <- gii_data %>%
+  clean_names() %>% 
+    select(iso3,country,gii_2010,gii_2019) %>% 
+    mutate(gii_diff = gii_2019 - gii_2010) %>% 
+    mutate(iso_code=countrycode(country, origin = 'country.name', destination = 'iso2c')) %>%
+    mutate(iso_code2=countrycode(iso3, origin ='iso3c', destination = 'iso2c'))
+```
+
+```{r}
+# Joining the data and selecting columns like iso2 code, select iso3, country, gii 2019, gii 2010, mutate - diff(2019-2010)
+gii_world <- select_gii_data %>% 
+  left_join(., 
+            world,
+            by = c("iso_code" = "iso"))
+```
+
+```{r}
+# Alternative joining of the data, using the world file as the left joined table to maintain its sf data format for mapping
+gii_world_2 <- world %>% 
+  left_join(.,
+            select_gii_data,
+            by = c("iso" = "iso_code"))
+```
+
+
+```{r}
+# Rebuilding the gii_world object as an sf object to make it a spatial object for mapping
+gii_world <- st_as_sf(gii_world)
+st_crs(gii_world)
+```
+
+```{r}
+tm_shape(gii_world) + tm_polygons(fill = "gii_diff")
+```
+```{r}
+tm_shape(gii_world_2) + tm_polygons(fill = "gii_diff")
+```
+```
+
